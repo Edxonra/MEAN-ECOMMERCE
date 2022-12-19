@@ -1,16 +1,21 @@
+before(()=>{
+  cy.task('seed')
+})
+
 describe('POST /user',()=>{
-  it.skip('Create user',()=>{
+  it('Create user',()=>{
     cy.request({
       method:'post',
       url:'/users',
       body:{
         name:'User',
-        email:'email@example.com',
+        email:'email3@example.com',
         password:'1234'
       }
-    }).then(res=>{
+    })
+    .then(res=>{
       assert.equal(res.status,201)
-      assert.isObject(res.body)
+      assert.equal(res.body,'User created')
     })
   })
   it('Email is already in use',()=>{
@@ -19,28 +24,25 @@ describe('POST /user',()=>{
       url:'/users',
       body:{
         name:'User',
-        email:'email@example.com',
+        email:'email1@example.com',
         password:'1234'
       }, 
       failOnStatusCode: false
-    }).then(res=>{
+    })
+    .then(res=>{
       assert.equal(res.status,400)
       assert.equal(res.body,'Email is already in use')
     })
   })
-})
-
-describe('GET /user',()=>{
-  it('Read users',()=>{
+  it('Invalid user data',()=>{
     cy.request({
-      method:'get',
+      method:'post',
       url:'/users',
-      headers:{
-        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzOGY3MzQxYjk0M2NhYmFhM2IzOGRmNiIsImlhdCI6MTY3MDM0NTUzNywiZXhwIjoxNjcyOTM3NTM3fQ.c7xp3N8z-aCN-2xccf6M0wN8NIvY5nP-v4EgoTJWBis'
-      }
-    }).then(res=>{
-      assert.equal(res.status,200)
-      assert.isArray(res.body)
+      failOnStatusCode: false
+    })
+    .then(res=>{
+      assert.equal(res.status,400)
+      assert.equal(res.body,'Invalid user data')
     })
   })
 })
@@ -51,12 +53,13 @@ describe('POST /users/login',()=>{
       method:'post',
       url:'/users/login',
       body:{
-        email:'email@example.com',
+        email:'email1@example.com',
         password:'1234'
       }
-    }).then(res=>{
-      assert.equal(res.status,200)
-      assert.isObject(res.body)
+    })
+    .then(user=>{
+      assert.equal(user.status,200)
+      assert.isString(user.body)
     })
   })
   it('Wrong password',()=>{
@@ -64,11 +67,12 @@ describe('POST /users/login',()=>{
       method:'post',
       url:'/users/login',
       body:{
-        email:'email@example.com',
-        password:'12345'
+        email:'email1@example.com',
+        password:'0234'
       },
       failOnStatusCode: false
-    }).then(res=>{
+    })
+    .then(res=>{
       assert.equal(res.status,401)
       assert.equal(res.body,'Wrong password')
     })
@@ -78,13 +82,51 @@ describe('POST /users/login',()=>{
       method:'post',
       url:'/users/login',
       body:{
-        email:'email@example1.com',
+        email:'0mail1@example.com',
         password:'1234'
       },
       failOnStatusCode: false
-    }).then(res=>{
+    })
+    .then(res=>{
       assert.equal(res.status,404)
       assert.equal(res.body,'Email do not exists')
+    })
+  })
+  it('Invalid user data',()=>{
+    cy.request({
+      method:'post',
+      url:'/users/login',
+      failOnStatusCode: false
+    })
+    .then(res=>{
+      assert.equal(res.status,400)
+      assert.equal(res.body,'Invalid user data')
+    })
+  })
+})
+
+describe('GET /user',()=>{
+  it('Read users',()=>{
+    cy.request({
+      method:'post',
+      url:'/users/login',
+      body:{
+        email:'admin@example.com',
+        password:'1234'
+      }
+    })
+    .then(admin=>{
+      cy.request({
+        method:'get',
+        url:'/users',
+        headers:{
+          Authorization: 'Bearer '+admin.body
+        }
+      })
+    })
+    .then(users=>{
+      assert.equal(users.status,200)
+      assert.isArray(users.body)
     })
   })
 })
@@ -92,12 +134,23 @@ describe('POST /users/login',()=>{
 describe('GET /users/profile',()=>{
   it('Read profile',()=>{
     cy.request({
-      method:'get',
-      url:'/users/profile',
-      headers:{
-        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzOGY2MTc2OGU5NWVkNTcwZjI0MmY2YyIsImlhdCI6MTY3MDM0NDQxMiwiZXhwIjoxNjcyOTM2NDEyfQ.HZ4PNWec4asiE98bbYRlG2pyGw9Ts0dx-1hov_pPEK0'
+      method:'post',
+      url:'/users/login',
+      body:{
+        email:'email1@example.com',
+        password:'1234'
       }
-    }).then(res=>{
+    })
+    .then(user=>{
+      cy.request({
+        method:'get',
+        url:'/users/profile',
+        headers:{
+          Authorization: 'Bearer '+user.body
+        }
+      })
+    })
+    .then(res=>{
       assert.equal(res.status,200)
       assert.isObject(res.body)
     })
@@ -107,14 +160,53 @@ describe('GET /users/profile',()=>{
 describe('PUT /users/profile',()=>{
   it('Update profile',()=>{
     cy.request({
-      method:'put',
-      url:'/users/profile',
-      headers:{
-        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzOGY2MTc2OGU5NWVkNTcwZjI0MmY2YyIsImlhdCI6MTY3MDM0NDQxMiwiZXhwIjoxNjcyOTM2NDEyfQ.HZ4PNWec4asiE98bbYRlG2pyGw9Ts0dx-1hov_pPEK0'
+      method:'post',
+      url:'/users/login',
+      body:{
+        email:'email1@example.com',
+        password:'1234'
       }
-    }).then(res=>{
+    })
+    .then(user=>{
+      cy.request({
+        method:'put',
+        url:'/users/profile',
+        headers:{
+          Authorization: 'Bearer '+user.body
+        },
+        body:{
+          name:'User',
+          password:'1234'
+        }
+      })
+    })
+    .then(res=>{
       assert.equal(res.status,200)
-      assert.isObject(res.body)
+      assert.equal(res.body,"Profile updated")
+    })
+  })
+  it('Invalid user data',()=>{
+    cy.request({
+      method:'post',
+      url:'/users/login',
+      body:{
+        email:'email1@example.com',
+        password:'1234'
+      }
+    })
+    .then(user=>{
+      cy.request({
+        method:'put',
+        url:'/users/profile',
+        headers:{
+          Authorization: 'Bearer '+user.body
+        },
+        failOnStatusCode: false
+      })
+    })
+    .then(res=>{
+      assert.equal(res.status,400)
+      assert.equal(res.body,"Invalid user data")
     })
   })
 })
@@ -122,42 +214,97 @@ describe('PUT /users/profile',()=>{
 describe('PUT /users/:id',()=>{
   it('Update user',()=>{
     cy.request({
-      method:'put',
-      url:'/users/639102c023eacc174a72c56b',
-      headers:{
-        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzOGY3MzQxYjk0M2NhYmFhM2IzOGRmNiIsImlhdCI6MTY3MDM0NTUzNywiZXhwIjoxNjcyOTM3NTM3fQ.c7xp3N8z-aCN-2xccf6M0wN8NIvY5nP-v4EgoTJWBis'
-      },
+      method:'post',
+      url:'/users/login',
       body:{
-        isAdmin:false
+        email:'admin@example.com',
+        password:'1234'
       }
-    }).then(res=>{
-      assert.equal(res.status,200)
-      assert.equal(res.body,'User updated')
     })
-  })
-  it('User not updated',()=>{
-    cy.request({
-      method:'put',
-      url:'/users/639102c023eacc174a72c56b',
-      headers:{
-        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzOGY3MzQxYjk0M2NhYmFhM2IzOGRmNiIsImlhdCI6MTY3MDM0NTUzNywiZXhwIjoxNjcyOTM3NTM3fQ.c7xp3N8z-aCN-2xccf6M0wN8NIvY5nP-v4EgoTJWBis'
-      }
-    }).then(res=>{
-      assert.equal(res.status,200)
-      assert.equal(res.body,'User not updated')
+    .then(admin=>{
+      cy.request({
+        method:'get',
+        url:'/users',
+        headers:{
+          Authorization: 'Bearer '+admin.body
+        }
+      })
+      .then(users=>{
+        cy.request({
+          method:'put',
+          url:'/users/'+users.body[1]._id,
+          headers:{
+            Authorization: 'Bearer '+admin.body
+          },
+          body:{
+            isAdmin:false
+          }
+        })
+      })
+      .then(res=>{
+        assert.equal(res.status,200)
+        assert.equal(res.body,'User updated')
+      })
     })
   })
   it('User not found',()=>{
     cy.request({
-      method:'put',
-      url:'/users/039102c023eacc174a72c56b',
-      headers:{
-        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYzOGY3MzQxYjk0M2NhYmFhM2IzOGRmNiIsImlhdCI6MTY3MDM0NTUzNywiZXhwIjoxNjcyOTM3NTM3fQ.c7xp3N8z-aCN-2xccf6M0wN8NIvY5nP-v4EgoTJWBis'
-      },
-      failOnStatusCode:false
-    }).then(res=>{
+      method:'post',
+      url:'/users/login',
+      body:{
+        email:'admin@example.com',
+        password:'1234'
+      }
+    })
+    .then(admin=>{
+      cy.request({
+        method:'put',
+        url:'/users/000000000000000000000000',
+        headers:{
+          Authorization: 'Bearer '+admin.body
+        },
+        body:{
+          isAdmin:false
+        },
+        failOnStatusCode: false
+      })
+    })
+    .then(res=>{
       assert.equal(res.status,404)
       assert.equal(res.body,'User not found')
+    })
+  })
+  it('Invalid user data',()=>{
+    cy.request({
+      method:'post',
+      url:'/users/login',
+      body:{
+        email:'admin@example.com',
+        password:'1234'
+      }
+    })
+    .then(admin=>{
+      cy.request({
+        method:'get',
+        url:'/users',
+        headers:{
+          Authorization: 'Bearer '+admin.body
+        }
+      })
+      .then(users=>{
+        cy.request({
+          method:'put',
+          url:'/users/'+users.body[1]._id,
+          headers:{
+            Authorization: 'Bearer '+admin.body
+          },
+          failOnStatusCode: false
+        })
+      })
+      .then(res=>{
+        assert.equal(res.status,400)
+        assert.equal(res.body,'Invalid user data')
+      })
     })
   })
 })
