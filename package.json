@@ -8,7 +8,8 @@
     "client": "npm start --prefix Frontend",
     "nodemon": "nodemon Backend/app.js",
     "test": "cypress open",
-    "dev": "concurrently \"npm run nodemon\" \"npm run test\" "
+    "component":"npm run test --prefix Frontend",
+    "dev": "concurrently \"npm run nodemon\" \"npm run client\"  \"npm run test\" "
   },
   "repository": {
     "type": "git",
@@ -30,6 +31,11 @@
     "path": "^0.12.7"
   },
   "devDependencies": {
+    "@angular-devkit/build-angular": "^15.0.4",
+    "@angular/cli": "^15.0.4",
+    "@angular/common": "^15.0.4",
+    "@angular/core": "^15.0.4",
+    "@angular/platform-browser-dynamic": "^15.0.4",
     "concurrently": "^7.6.0",
     "cypress": "^11.2.0",
     "nodemon": "^2.0.20"
